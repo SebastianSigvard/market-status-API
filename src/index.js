@@ -8,6 +8,17 @@ const apisecret = 'cc3bdafb64704d20a2413a78fea01be8';
 
 const bittrexSocket = new BittrexSocket(url, hub, apikey, apisecret);
 
-bittrexSocket.connect().then( () => {
-  bittrexSocket.subscribe();
+const messageProcessor = (data) => {
+  console.log(data);
+};
+
+const channels = [
+  'heartbeat',
+  'trade_BTC-USD',
+  // 'orderbook_BTC-USD_25',
+  'balance',
+];
+
+bittrexSocket.connect(messageProcessor).then( () => {
+  bittrexSocket.subscribe(channels);
 });

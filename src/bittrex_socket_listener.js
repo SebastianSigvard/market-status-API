@@ -24,8 +24,10 @@ class BittrexSocket {
 
   /**
  * Connects websocket to bittrex.
+ * @param {function} messageProcessor message user procesor.
  */
-  async connect() {
+  async connect(messageProcessor) {
+    this.#messageProcessor = messageProcessor;
     this.#client = await this.#_connect();
     if (this.#apisecret) {
       await this.#authenticate(this.#client);
@@ -36,14 +38,9 @@ class BittrexSocket {
 
   /**
  * Suscribe for a especific stream.
+ * @param {Array} channels channels to suscribe.
  */
-  async subscribe() {
-    const channels = [
-      'heartbeat',
-      'trade_BTC-USD',
-      'orderbook_BTC-USD_25',
-      'balance',
-    ];
+  async subscribe(channels) {
     const response = await this.#invoke(this.#client, 'subscribe', channels);
 
     for (let i = 0; i < channels.length; i++) {
@@ -121,7 +118,6 @@ class BittrexSocket {
    * @param {int} message Incoming message.
    */
   #messageReceived(message) {
-    console.log(message);
     const data = JSON.parse(message.utf8Data);
     if (data['R']) {
       this.#resolveInvocationPromise(data.R);
@@ -133,11 +129,10 @@ class BittrexSocket {
             // eslint-disable-next-line new-cap
             const raw = new Buffer.from(b64, 'base64');
 
-            zlib.inflateRaw(raw, function(err, inflated) {
+            zlib.inflateRaw(raw, (err, inflated) => {
               if (!err) {
                 const json = JSON.parse(inflated.toString('utf8'));
-                console.log(m.M + ': ');
-                console.log(json);
+                this.#messageProcessor(json);
               }
             });
           } else if (m.M == 'heartbeat') {
@@ -158,6 +153,7 @@ class BittrexSocket {
 
   #client;
   #resolveInvocationPromise = () => { };
+  #messageProcessor = () => { };
 }
 
 module.exports = BittrexSocket;
