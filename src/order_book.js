@@ -16,8 +16,7 @@ class ErrorOB extends Error {
 const DEFAULT = -1;
 const BAD_DEPTH = 0;
 const BAD_KEYS = 1;
-const BAD_UPDATE = 2;
-const INCONSISTENT_UPDATE = 3;
+const INCONSISTENT_UPDATE = 2;
 
 /**
  * Class to create and mantain order books.
@@ -27,8 +26,8 @@ class OrderBook {
  * Constructor
  * @param {int} depth depth of the order book.
  */
-  constructor(depth) {
-    this.#depth = depth;
+  constructor(depth = 25) {
+    this.#depth = Number.parseInt(depth);
     this.#bids = [];
     this.#asks = [];
   }
@@ -40,10 +39,8 @@ class OrderBook {
  */
   init(bids, asks) {
     if ( bids.length != this.#depth || asks.length != this.#depth ) {
-      const e = new ErrorOB(`Bids and/or Asks length
-                             not equal to depth of order book`);
-      e.code = BAD_DEPTH;
-      throw e;
+      // eslint-disable-next-line
+      throw new ErrorOB(`Bids and/or Asks length not equal to depth of order book`, BAD_DEPTH);
     }
 
     this.#bids = [];
@@ -51,25 +48,22 @@ class OrderBook {
 
     bids.forEach( (bid) => {
       if ( ! bid.hasOwnProperty('quantity') || ! bid.hasOwnProperty('rate') ) {
-        const e = new ErrorOB('All bids must have rate and quantity keys');
-        e.code = BAD_KEYS;
-        throw e;
+        throw new ErrorOB('All bids must have rate and quantity keys',
+            BAD_KEYS);
       }
       this.#bids.push( {
-        quantity: Number.parseInt(bid.quantity),
-        rate: Number.parseInt(bid.rate),
+        quantity: bid.quantity,
+        rate: bid.rate,
       });
     });
 
     asks.forEach( (ask) => {
       if ( ! ask.hasOwnProperty('quantity') || ! ask.hasOwnProperty('rate') ) {
-        const e = new ErrorOB('All ask must have rate and quantity keys');
-        e.code = BAD_KEYS;
-        throw e;
+        throw new ErrorOB('Ask must have rate and quantity keys', BAD_KEYS);
       }
       this.#asks.push( {
-        quantity: Number.parseInt(ask.quantity),
-        rate: Number.parseInt(ask.rate),
+        quantity: ask.quantity,
+        rate: ask.rate,
       });
     });
   }
@@ -82,23 +76,15 @@ class OrderBook {
   update(bidDeltas, askDeltas) {
     bidDeltas.forEach( (bid) => {
       if ( ! bid.hasOwnProperty('quantity') || ! bid.hasOwnProperty('rate') ) {
-        const e = new ErrorOB('All bids must have rate and quantity keys');
-        e.code = BAD_KEYS;
-        throw e;
+        throw new ErrorOB('Bids must have rate and quantity keys', BAD_KEYS);
       }
 
       const i = this.#bids.findIndex( (_b) => _b.rate === bid.rate );
 
-      if ( i === -1 && Number.parseInt(bid.quantity) === 0) {
-        const e = new ErrorOB('Updating non existing bid');
-        e.code = BAD_UPDATE;
-        throw e;
-      }
-
       if ( i === -1 ) {
         this.#bids.push( {
-          quantity: Number.parseInt(bid.quantity),
-          rate: Number.parseInt(bid.rate),
+          quantity: bid.quantity,
+          rate: bid.rate,
         });
         return;
       }
@@ -113,23 +99,15 @@ class OrderBook {
 
     askDeltas.forEach( (ask) => {
       if ( ! ask.hasOwnProperty('quantity') || ! ask.hasOwnProperty('rate') ) {
-        const e = new ErrorOB('All asks must have rate and quantity keys');
-        e.code = BAD_KEYS;
-        throw e;
+        throw new ErrorOB('Asks must have rate and quantity keys', BAD_KEYS);
       }
 
       const i = this.#asks.findIndex( (_a) => _a.rate === ask.rate );
 
-      if ( i === -1 && Number.parseInt(ask.quantity) === 0) {
-        const e = new ErrorOB('Updating non existing ask');
-        e.code = BAD_UPDATE;
-        throw e;
-      }
-
       if ( i === -1 ) {
         this.#asks.push( {
-          quantity: Number.parseInt(ask.quantity),
-          rate: Number.parseInt(ask.rate),
+          quantity: ask.quantity,
+          rate: ask.rate,
         });
         return;
       }
@@ -142,14 +120,12 @@ class OrderBook {
       this.#asks[i].quantity = ask.quantity;
     });
 
-    if ( this.#asks.length != this.#depth || this.#bids != this.#depth ) {
+    if ( this.#asks.length != this.#depth ||
+         this.#bids.length != this.#depth ) {
       this.#bids = [];
       this.#asks = [];
-
-      const e = new ErrorOB(`Inconsistent update, order book reseted,
-                             please init again`);
-      e.code = INCONSISTENT_UPDATE;
-      throw e;
+      // eslint-disable-next-line
+      throw new ErrorOB(`Inconsistent update, order book reseted, please init again`, INCONSISTENT_UPDATE);
     }
   }
 

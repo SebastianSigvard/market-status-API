@@ -15,7 +15,7 @@ const messageProcessor = (data) => {// Dummy messageProcessor for testing
 
 const channels = [
   'orderbook_BTC-USD_' + OB_DEPTH,
-  'orderbook_ETH-USD_' + OB_DEPTH,
+  // 'orderbook_ETH-USD_' + OB_DEPTH,
 ];
 
 bittrexSocket.connect(messageProcessor).then( () => {
