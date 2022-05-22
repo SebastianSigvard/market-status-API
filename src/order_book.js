@@ -24,10 +24,12 @@ const INCONSISTENT_UPDATE = 2;
 class OrderBook {
   /**
  * Constructor
- * @param {int} depth depth of the order book.
+ * @param {int} depth Depth of the order book.
+ * @param {string} currencyPair Currency pair.
  */
-  constructor(depth = 25) {
+  constructor(depth = 25, currencyPair = 'BTC-USD') {
     this.#depth = Number.parseInt(depth);
+    this.#currencyPair = currencyPair;
     this.#bids = [];
     this.#asks = [];
   }
@@ -89,7 +91,7 @@ class OrderBook {
         return;
       }
 
-      if ( Number.parseInt(bid.quantity) === 0 ) {
+      if ( bid.quantity === '0' ) {
         this.#bids.splice(i, 1);
         return;
       }
@@ -112,7 +114,7 @@ class OrderBook {
         return;
       }
 
-      if ( Number.parseInt(ask.quantity) === 0 ) {
+      if ( ask.quantity === '0' ) {
         this.#asks.splice(i, 1);
         return;
       }
@@ -129,9 +131,24 @@ class OrderBook {
     }
   }
 
+  /**
+ * Currency pair getter.
+ */
+  get currencyPair() {
+    return this.#currencyPair;
+  }
+
+  /**
+ * Depth getter.
+ */
+  get depth() {
+    return this.#depth;
+  }
+
   #depth;
   #bids;
   #asks;
+  #currencyPair;
 }
 
 module.exports = OrderBook;
