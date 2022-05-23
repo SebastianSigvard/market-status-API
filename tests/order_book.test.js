@@ -63,7 +63,6 @@ const initFail = () => {
     // eslint-disable-next-line camelcase
     orderBook.init([...initial_ask].splice(1), [...initial_bid].splice(1));
   } catch (error) {
-    console.log(error.message);
     return error.code === 0;
   }
 };
@@ -84,4 +83,70 @@ test('Get Tips', () => {
       orderBook.getTips(),
   ).toStrictEqual({bid: {'quantity': '0.19157204', 'rate': '29954.31800000'},
     ask: {'quantity': '0.19500000', 'rate': '29964.38100000'}});
+});
+
+test('Buy Price no cap reached', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.buyPrice(1.19769275, 29969.51241).efectivePrice,
+  ).toBeCloseTo(29969.31162, 5); // Google sheets calculated result
+});
+
+test('Buy Price cap reached', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.buyPrice(1.252688885, 29969.09332).amount,
+  ).toBeCloseTo(1.1476293, 5); // Google sheets calculated result
+});
+
+test('Buy Price fail when limit overpassed', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.buyPrice(17.47, 30062).status,
+  ).toStrictEqual('Failed'); // Google sheets calculated result
+});
+
+test('Sell Price no cap reached', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.sellPrice(1.27182171, 29946.98129).efectivePrice,
+  ).toBeCloseTo(29946.98921, 5); // Google sheets calculated result
+});
+
+test('Sell Price cap reached', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.sellPrice(1.27182171, 29948.44993).amount,
+  ).toBeCloseTo(1.0705354, 5); // Google sheets calculated result
+});
+
+test('Buy Price fail when limit overpassed', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.sellPrice(5.37, 29902.96).status,
+  ).toStrictEqual('Failed'); // Google sheets calculated result
 });
