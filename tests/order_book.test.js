@@ -1,4 +1,5 @@
 const OrderBook = require('../src/order_book');
+const shuffle = require('./helpers');
 
 const orderBook = new OrderBook(25);
 
@@ -60,7 +61,7 @@ test('Update 4', () => {
 const initFail = () => {
   try {
     // eslint-disable-next-line camelcase
-    orderBook.init(initial_ask.splice(1), initial_bid.splice(1));
+    orderBook.init([...initial_ask].splice(1), [...initial_bid].splice(1));
   } catch (error) {
     console.log(error.message);
     return error.code === 0;
@@ -71,4 +72,16 @@ test('Throw init', () => {
   expect(
       initFail(),
   ).toBe(true);
+});
+
+test('Get Tips', () => {
+  shuffle(initial_bid);
+  shuffle(initial_ask);
+  expect(
+      orderBook.init(initial_bid, initial_ask) == undefined,
+  ).toBe(true);
+  expect(
+      orderBook.getTips(),
+  ).toStrictEqual({bid: {'quantity': '0.19157204', 'rate': '29954.31800000'},
+    ask: {'quantity': '0.19500000', 'rate': '29964.38100000'}});
 });

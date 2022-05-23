@@ -68,6 +68,8 @@ class OrderBook {
         rate: ask.rate,
       });
     });
+
+    this.#sort();
   }
 
   /**
@@ -129,6 +131,16 @@ class OrderBook {
       // eslint-disable-next-line
       throw new ErrorOB(`Inconsistent update, order book reseted, please init again`, INCONSISTENT_UPDATE);
     }
+
+    this.#sort();
+  }
+
+  /**
+ * Currency pair getter.
+ * @return {Object} Best rate for bid and ask and the quantity.
+ */
+  getTips() {
+    return {bid: this.#bids[0], ask: this.#asks[0]};
   }
 
   /**
@@ -143,6 +155,18 @@ class OrderBook {
  */
   get depth() {
     return this.#depth;
+  }
+
+  /**
+ * Sorts asks and bids arrays.
+ */
+  #sort() {
+    this.#asks.sort( (a, b) => {
+      return a.rate - b.rate;
+    });
+    this.#bids.sort( (a, b) => {
+      return b.rate - a.rate;
+    });
   }
 
   #depth;
