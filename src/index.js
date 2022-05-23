@@ -7,7 +7,7 @@ const hub = ['c3'];
 const apikey = '7379583862cc43d9b5a2b2ee550452d1';
 const apisecret = 'cc3bdafb64704d20a2413a78fea01be8';
 
-const OB_DEPTH = 500;
+const OB_DEPTH = 25;
 
 const bittrexSocket = new BittrexSocket(url, hub, apikey, apisecret);
 const orderBook = new OrderBook(OB_DEPTH, 'BTC-USD');

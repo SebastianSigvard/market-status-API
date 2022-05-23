@@ -68,6 +68,8 @@ class OrderBook {
         rate: ask.rate,
       });
     });
+
+    this.#sort();
   }
 
   /**
@@ -129,6 +131,87 @@ class OrderBook {
       // eslint-disable-next-line
       throw new ErrorOB(`Inconsistent update, order book reseted, please init again`, INCONSISTENT_UPDATE);
     }
+
+    this.#sort();
+  }
+
+  /**
+ * Currency pair getter.
+ * @return {Object} Best rate for bid and ask and the quantity.
+ */
+  getTips() {
+    return {bid: this.#bids[0], ask: this.#asks[0]};
+  }
+
+  /**
+ * Checks the price for an especifc amount with a cap for the efective price.
+ * @param {flaot} amount quantity to be purchased.
+ * @param {flaot} cap optional celling for the purchase.
+ * @return {Object} status amount and efectivePrice.
+ */
+  buyPrice(amount, cap = Infinity) {
+    return this.#calcPrice(amount, cap, true);
+  }
+
+  /**
+   * Checks the price for an especifc amount with a cap for the efective price.
+   * @param {flaot} amount quantity to be selled.
+   * @param {flaot} cap optional celling for the sale.
+   * @return {Object} status amount and efectivePrice.
+   */
+  sellPrice(amount, cap = Infinity) {
+    return this.#calcPrice(amount, cap, false);
+  }
+
+  /**
+   * Calc the price for an especifc amount with a cap for the efective price.
+   * @param {flaot} amount quantity to be selled/buyed.
+   * @param {flaot} cap optional celling for the sale/buy.
+   * @param {boolean} isBuy is buy or sell flag.
+   * @return {Object} status amount and efectivePrice.
+   */
+  #calcPrice(amount, cap = Infinity, isBuy) {
+    const ret = {status: 'Failed', amount: '', efectivePrice: ''};
+    let curAmount = 0;
+    let curPrice = 0;
+    let last = false;
+
+    const orders = isBuy ? this.#asks : this.#bids;
+
+    for (const oreder of orders) {
+      let toSellBuy = 0;
+      const rate = Number.parseFloat(oreder.rate);
+      const quantity = Number.parseFloat(oreder.quantity);
+
+      if ( curAmount + quantity > amount ) {
+        toSellBuy = curAmount + quantity - amount;
+        last = true;
+      } else {
+        toSellBuy = quantity;
+      }
+      // eslint-disable-next-line max-len
+      const newCurPrice = ( curAmount * curPrice + toSellBuy * rate ) / ( curAmount + toSellBuy );
+
+      if ( isBuy && newCurPrice > cap || ! isBuy && newCurPrice < cap) {
+        toSellBuy = curAmount * ( curPrice - cap ) / ( cap - rate );
+        ret.efectivePrice = cap;
+        ret.amount = curAmount + toSellBuy;
+        ret.status = 'Cap Reached';
+        break;
+      }
+
+      curAmount += toSellBuy;
+      curPrice = newCurPrice;
+
+      if (last) {
+        ret.efectivePrice = curPrice;
+        ret.amount = curAmount;
+        ret.status = 'Succes';
+        break;
+      }
+    }
+
+    return ret;
   }
 
   /**
@@ -143,6 +226,18 @@ class OrderBook {
  */
   get depth() {
     return this.#depth;
+  }
+
+  /**
+ * Sorts asks and bids arrays.
+ */
+  #sort() {
+    this.#asks.sort( (a, b) => {
+      return a.rate - b.rate;
+    });
+    this.#bids.sort( (a, b) => {
+      return b.rate - a.rate;
+    });
   }
 
   #depth;
