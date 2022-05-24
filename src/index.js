@@ -1,23 +1,18 @@
-const BittrexSocket = require('./bittrex_socket_listener');
-const ObmProcessor = require('./obm_processor');
-const OrderBook = require('./order_book');
+const express = require('express');
+const MarketStatus = require('./market_status');
 
-const url = 'wss://socket-v3.bittrex.com/signalr';
-const hub = ['c3'];
-const apikey = '7379583862cc43d9b5a2b2ee550452d1';
-const apisecret = 'cc3bdafb64704d20a2413a78fea01be8';
+const marketStatus = new MarketStatus();
 
-const OB_DEPTH = 25;
+const app = express();
+app.use(express.static('./public'));
 
-const bittrexSocket = new BittrexSocket(url, hub, apikey, apisecret);
-const orderBook = new OrderBook(OB_DEPTH, 'BTC-USD');
-const obmProcessor = new ObmProcessor([orderBook]);
 
-const channels = [
-  'orderbook_BTC-USD_' + OB_DEPTH,
-  // 'orderbook_ETH-USD_' + OB_DEPTH,
-];
+app.get('/tips/*', async (request, response) => {
+  const cp = request.url.replace('/tips/', '');
+  response.json(marketStatus.processTipsReq(cp));
+});
 
-bittrexSocket.connect(obmProcessor.messageProcesor).then( () => {
-  bittrexSocket.subscribe(channels);
+
+app.listen(process.env.PORT || 5000, () => {
+  console.log('App aviable on http://localhost:5000');
 });
