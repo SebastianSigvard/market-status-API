@@ -53,8 +53,62 @@ class MarketStatus {
     }
     return {
       status: 'success',
-      currency: currencyPair,
+      currencyPair: currencyPair,
       data: this.#obs[currencyPair].getTips(),
+    };
+  }
+
+  /**
+ * Process price calculation request.
+ * @param {string} currencyPair Cp for the calculation.
+ * @param {string} operation Sell or buy.
+ * @param {string} amount Quantity to buy or sell.
+ * @param {string} cap Limit to the efective price of operation.
+ * @return {Object} Object with status and message or data.
+ **/
+  processCalPriReq(currencyPair, operation, amount, cap) {
+    if (currencyPair != 'BTC-USD' && currencyPair != 'ETH-USD' ) {
+      return {
+        status: 'error',
+        message: 'For the moment we are only working with BTC-USD and ETH-USD',
+      };
+    }
+
+    if (operation != 'buy' && operation != 'sell' ) {
+      return {
+        status: 'error',
+        message: 'The only 2 permited operations are buy or sell',
+      };
+    }
+
+    if ( Number.parseFloat(amount) <= 0) {
+      return {
+        status: 'error',
+        message: 'The amount must be greater than 0',
+      };
+    }
+
+    let res;
+
+    if (operation === 'buy') {
+      // eslint-disable-next-line max-len
+      res = this.#obs[currencyPair].buyPrice(Number.parseFloat(amount), cap);
+    } else {
+      // eslint-disable-next-line max-len
+      res = this.#obs[currencyPair].sellPrice(Number.parseFloat(amount), cap);
+    }
+
+    if (res.status === 'Failed') {
+      return {
+        status: 'error',
+        message: `The amount to ${operation} is greater than the available`,
+      };
+    }
+
+    return {
+      status: 'succes',
+      capReached: res.status === 'Succes' ? false : true,
+      data: {efectivePrice: res.efectivePrice, amount: res.amount},
     };
   }
 
