@@ -159,7 +159,7 @@ class OrderBook {
    * @param {flaot} cap optional celling for the sale.
    * @return {Object} status amount and efectivePrice.
    */
-  sellPrice(amount, cap = Infinity) {
+  sellPrice(amount, cap = 0) {
     return this.#calcPrice(amount, cap, false);
   }
 
@@ -170,7 +170,7 @@ class OrderBook {
    * @param {boolean} isBuy is buy or sell flag.
    * @return {Object} status amount and efectivePrice.
    */
-  #calcPrice(amount, cap = Infinity, isBuy) {
+  #calcPrice(amount, cap, isBuy) {
     const ret = {status: 'Failed', amount: '', efectivePrice: ''};
     let curAmount = 0;
     let curPrice = 0;
@@ -184,7 +184,7 @@ class OrderBook {
       const quantity = Number.parseFloat(oreder.quantity);
 
       if ( curAmount + quantity > amount ) {
-        toSellBuy = curAmount + quantity - amount;
+        toSellBuy = amount - curAmount;
         last = true;
       } else {
         toSellBuy = quantity;

@@ -1,23 +1,81 @@
-const BittrexSocket = require('./bittrex_socket_listener');
-const ObmProcessor = require('./obm_processor');
-const OrderBook = require('./order_book');
+const cors = require('cors');
+const express = require('express');
+const bodyParser = require('body-parser');
+const MarketStatus = require('./market_status');
+const app = express();
+const server = require('http').createServer(app);
+const WebSocket = require('ws');
 
-const url = 'wss://socket-v3.bittrex.com/signalr';
-const hub = ['c3'];
-const apikey = '7379583862cc43d9b5a2b2ee550452d1';
-const apisecret = 'cc3bdafb64704d20a2413a78fea01be8';
+const wss = new WebSocket.Server( {server} );
+const marketStatus = new MarketStatus();
 
-const OB_DEPTH = 25;
+// API REST
 
-const bittrexSocket = new BittrexSocket(url, hub, apikey, apisecret);
-const orderBook = new OrderBook(OB_DEPTH, 'BTC-USD');
-const obmProcessor = new ObmProcessor([orderBook]);
+app.use(bodyParser.json());
+app.use(cors());
 
-const channels = [
-  'orderbook_BTC-USD_' + OB_DEPTH,
-  // 'orderbook_ETH-USD_' + OB_DEPTH,
-];
+app.get('/tips/*', async (request, response) => {
+  const cp = request.url.replace('/tips/', '');
+  response.json(marketStatus.processTipsReq(cp));
+});
 
-bittrexSocket.connect(obmProcessor.messageProcesor).then( () => {
-  bittrexSocket.subscribe(channels);
+app.post('/calculate-price', async (request, response) => {
+  const {currencyPair, operation, amount, cap = undefined} = request.body;
+  if ( !currencyPair || !operation || ! amount) {
+    response.json( {
+      status: 'error',
+      // eslint-disable-next-line max-len
+      message: 'body must include currencyPair operation and amount (cap optional)',
+    });
+    return;
+  }
+  response.json(
+      marketStatus.processCalPriReq(currencyPair, operation, amount, cap),
+  );
+});
+
+// WEWSocket
+
+wss.on('connection', (socket) => {
+  socket.addEventListener('message', (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.method === 'tips') {
+      socket.send( JSON.stringify( {
+        method: 'tips-response',
+        data: marketStatus.processTipsReq(data.currencyPair),
+      },
+      ));
+      return;
+    }
+
+    if (data.method === 'calculate-price') {
+      if ( !data.currencyPair || !data.operation || ! data.amount) {
+        socket.send( JSON.stringify( {
+          method: 'calculate-price-response',
+          data: {
+            status: 'error',
+            // eslint-disable-next-line max-len
+            message: 'body must include currencyPair operation and amount (cap optional)',
+          },
+        }));
+        return;
+      }
+      socket.send( JSON.stringify( {
+        method: 'calculate-price-response',
+        data: marketStatus.processCalPriReq(data.currencyPair,
+            data.operation, data.amount, data.cap),
+      }));
+      return;
+    }
+
+    socket.send( JSON.stringify( {
+      method: '',
+      data: {message: 'Available methods: tips and calculate-price'},
+    }));
+  });
+});
+
+server.listen(process.env.PORT || 5000, () => {
+  console.log('App aviable on http://localhost:5000');
 });
