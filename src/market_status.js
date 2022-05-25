@@ -16,10 +16,12 @@ const OB_DEPTH = 25;
  **/
 class MarketStatus {
   /**
- * Constructor
+ * MarketStatus constructor, creates orderdr books the bittrex socket
+ * and de order book message proccessor.
  **/
   constructor() {
     this.#bittrexSocket = new BittrexSocket(url, hub, apikey, apisecret);
+
     this.#obs = {};
     const obBtcUsd = new OrderBook(OB_DEPTH, 'BTC-USD');
     const obEthUsd = new OrderBook(OB_DEPTH, 'ETH-USD');
@@ -42,7 +44,7 @@ class MarketStatus {
   /**
  * Process tips request.
  * @param {string} currencyPair Cp  to be requested.
- * @return {Object} object with status and message or data.
+ * @return {Object} Object with status and message or data.
  **/
   processTipsReq(currencyPair) {
     if (currencyPair != 'BTC-USD' && currencyPair != 'ETH-USD' ) {
@@ -102,6 +104,13 @@ class MarketStatus {
       return {
         status: 'error',
         message: `The amount to ${operation} is greater than the available`,
+      };
+    }
+
+    if (res.status === 'Empty') {
+      return {
+        status: 'error',
+        message: res.message,
       };
     }
 

@@ -10,8 +10,8 @@ const FETCHED =2;
  **/
 class ObmProcessor {
   /**
- * Constructor
- * @param {Object} orederBooks All order books to fill and mantain.
+ * ObmProcessor constructor
+ * @param {Array} orederBooks All order books to fill and mantain.
  **/
   constructor(orederBooks) {
     this.#obs = {};
@@ -29,7 +29,7 @@ class ObmProcessor {
 
   /**
  * Process messages from Bittrex oredr book stream.
- * @param {Object} message message to be processed.
+ * @param {Object} message Message to be processed.
  */
   messageProcesor(message) {
     const cp = message.marketSymbol;
@@ -53,13 +53,16 @@ class ObmProcessor {
           .then( (data) => {
             if ( !data ) return;
             this.#obs[cp].FetchState = FETCHED;
-            this.#obs[cp].orderBook.init(data.bid, data.ask);
-            this.#pruneMq(this.#obs[cp].mq, this.#obs[cp].sequenceNumber);
             try {
+              this.#obs[cp].orderBook.init(data.bid, data.ask);
+              this.#pruneMq(this.#obs[cp].mq, this.#obs[cp].sequenceNumber);
               this.#updateMq(this.#obs[cp]);
-            } catch (err) {
-              console.error(err);
+            } catch (error) {
+              this.#handleError(error, this.#obs[cp]);
             }
+          })
+          .catch( (error) => {
+            this.#handleError(error, this.#obs[cp]);
           });
       this.#obs[cp].FetchState = FETCHING;
       return;
@@ -67,8 +70,8 @@ class ObmProcessor {
 
     try {
       this.#updateMq(this.#obs[cp]);
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      this.#handleError(error, this.#obs[cp]);
     }
   }
 
@@ -96,15 +99,24 @@ class ObmProcessor {
     ob.mq.forEach( (message) => {
       if ( ob.sequenceNumber != -1 &&
         (message.sequence != Number.parseInt(ob.sequenceNumber) + 1) ) {
-        ob.FetchState = NOT_FETCH;
-        ob.mq.length = 0;
-        ob.sequenceNumber = -1;
         throw new Error('Non sequent message update');
       }
       ob.orderBook.update(message.bidDeltas, message.askDeltas);
       ob.sequenceNumber = message.sequence;
     });
     ob.mq.length = 0;
+  }
+
+  /**
+ * Handles errors reseting the order book and state.
+ * @param {Object} error Error.
+ * @param {Object} ob Orderbook and context.
+ **/
+  #handleError(error, ob) {
+    ob.FetchState = NOT_FETCH;
+    ob.mq.length = 0;
+    ob.sequenceNumber = -1;
+    console.error(error);
   }
 
   #obs;

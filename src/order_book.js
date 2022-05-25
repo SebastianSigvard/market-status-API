@@ -3,9 +3,9 @@
  */
 class ErrorOB extends Error {
   /**
- * constructor.
- * @param {string} args array with all the bids.
- * @param {int} code array with all the asks.
+ * ErrorOB constructor.
+ * @param {string} args Message of error.
+ * @param {int} code Error code.
  */
   constructor(args, code = DEFAULT) {
     super(args);
@@ -140,6 +140,9 @@ class OrderBook {
  * @return {Object} Best rate for bid and ask and the quantity.
  */
   getTips() {
+    if (this.#bids.length === 0 || this.#asks.length === 0 ) {
+      return {status: 'Empty', message: 'Order book empty, try in a while'};
+    }
     return {bid: this.#bids[0], ask: this.#asks[0]};
   }
 
@@ -171,6 +174,9 @@ class OrderBook {
    * @return {Object} status amount and efectivePrice.
    */
   #calcPrice(amount, cap, isBuy) {
+    if (this.#bids.length === 0 || this.#asks.length === 0 ) {
+      return {status: 'Empty', message: 'Order book empty, try in a while'};
+    }
     const ret = {status: 'Failed', amount: '', efectivePrice: ''};
     let curAmount = 0;
     let curPrice = 0;
