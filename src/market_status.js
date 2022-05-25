@@ -92,10 +92,10 @@ class MarketStatus {
 
     if (operation === 'buy') {
       // eslint-disable-next-line max-len
-      res = this.#obs[currencyPair].buyPrice(Number.parseFloat(amount), cap);
+      res = this.#obs[currencyPair].buyPrice(Number.parseFloat(amount), cap ?? Infinity);
     } else {
       // eslint-disable-next-line max-len
-      res = this.#obs[currencyPair].sellPrice(Number.parseFloat(amount), cap);
+      res = this.#obs[currencyPair].sellPrice(Number.parseFloat(amount), cap ?? 0);
     }
 
     if (res.status === 'Failed') {

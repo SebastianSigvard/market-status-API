@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const bodyParser = require('body-parser');
 const MarketStatus = require('./market_status');
 
@@ -6,6 +7,7 @@ const marketStatus = new MarketStatus();
 
 const app = express();
 app.use(bodyParser.json());
+app.use(cors());
 
 
 app.get('/tips/*', async (request, response) => {
@@ -14,7 +16,7 @@ app.get('/tips/*', async (request, response) => {
 });
 
 app.post('/calculate-price', async (request, response) => {
-  const {currencyPair, operation, amount, cap = Infinity} = request.body;
+  const {currencyPair, operation, amount, cap = undefined} = request.body;
   if ( !currencyPair || !operation || ! amount) {
     response.json( {
       status: 'error',
