@@ -9,11 +9,11 @@ const uuid = require('uuid');
  */
 class BittrexSocket {
   /**
- * Constructor
- * @param {string} url url´s api.
- * @param {Array} hub string arrays of hubs.
- * @param {string} apikey client instance.
- * @param {string} apisecret client instance.
+ * BittrexSocket constructor
+ * @param {string} url Url´s api.
+ * @param {Array} hub String arrays of hubs.
+ * @param {string} apikey Api key.
+ * @param {string} apisecret Api secret key.
  */
   constructor(url, hub, apikey, apisecret) {
     this.#url = url;
@@ -24,15 +24,17 @@ class BittrexSocket {
 
   /**
  * Connects websocket to bittrex.
- * @param {function} messageProcessor message user procesor.
+ * @param {function} messageProcessor Message user procesor.
  */
   async connect(messageProcessor) {
     this.#messageProcessor = messageProcessor;
     this.#client = await this.#_connect();
+
     if (this.#apisecret) {
       await this.#authenticate(this.#client);
     } else {
       console.log('Authentication skipped because API key was not provided');
+      throw new Error('No keys');
     }
   }
 
@@ -55,7 +57,7 @@ class BittrexSocket {
 
   /**
  * Private: Connects websocket to bittrex.
- * @return {client} client instance.
+ * @return {Object} client instance.
  */
   async #_connect() {
     return new Promise((resolve) => {
@@ -71,7 +73,7 @@ class BittrexSocket {
 
   /**
  * Authenticates the client.
- * @param {int} client client instance.
+ * @param {Object} client client instance.
  */
   async #authenticate(client) {
     const timestamp = new Date().getTime();
@@ -90,6 +92,7 @@ class BittrexSocket {
       console.log('Authenticated');
     } else {
       console.log('Authentication failed: ' + response['ErrorCode']);
+      throw new Error('Authentication failed');
     }
   }
 
