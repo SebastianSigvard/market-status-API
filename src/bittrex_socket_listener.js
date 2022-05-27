@@ -20,6 +20,7 @@ class BittrexSocket {
     this.#hub = hub;
     this.#apikey = apikey;
     this.#apisecret = apisecret;
+    this.#checkHBStartOnce = false;
   }
 
   /**
@@ -29,6 +30,7 @@ class BittrexSocket {
   async connect(messageProcessor) {
     this.#messageProcessor = messageProcessor;
     this.#client = await this.#_connect();
+    this.#heartBeat = true;
 
     if (this.#apisecret) {
       await this.#authenticate(this.#client);
@@ -43,6 +45,13 @@ class BittrexSocket {
  * @param {Array} channels channels to suscribe.
  */
   async subscribe(channels) {
+    if ( ! this.#checkHBStartOnce ) {
+      channels.push('heartbeat');
+      console.log('checkHB started once');
+      setInterval(this.#checkHB.bind(this), 30000);
+      this.#checkHBStartOnce = true;
+    }
+    this.#channels = channels;
     const response = await this.#invoke(this.#client, 'subscribe', channels);
 
     for (let i = 0; i < channels.length; i++) {
@@ -139,7 +148,7 @@ class BittrexSocket {
               }
             });
           } else if (m.M == 'heartbeat') {
-            console.log('\u2661');
+            this.#heartBeat = true;
           } else if (m.M == 'authenticationExpiring') {
             console.log('Authentication expiring...');
             this.#authenticate(this.#client);
@@ -148,6 +157,27 @@ class BittrexSocket {
       });
     }
   }
+
+  /**
+   * Checks the heartBeat if missing reset connection.
+   */
+  #checkHB() {
+    if (this.#heartBeat) {
+      console.log('HB checked');
+      this.#heartBeat = false;
+    } else {
+      console.log('Reconecting!');
+      this.#client.end();
+      this.connect(this.#messageProcessor)
+          .then( () => {
+            this.subscribe(this.#channels);
+          });
+    }
+  }
+
+  #channels;
+  #heartBeat;
+  #checkHBStartOnce;
 
   #url;
   #hub;
