@@ -5,6 +5,7 @@ const zlib = require('zlib');
 const uuid = require('uuid');
 
 const WATCHDOG_PERIOD = 600000;
+
 /**
  * Class that handels websocket connection to bittrex api, allowing
  * you to suscribe to multiples streams.

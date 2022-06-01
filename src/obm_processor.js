@@ -1,6 +1,8 @@
+const logger = require('./logger');
 const fetch = (...args) =>
   import('node-fetch').then(({default: fetch}) => fetch(...args));
 
+// States for Synchronizing state machine
 const NOT_FETCH = 0;
 const FETCHING = 1;
 const FETCHED =2;
@@ -15,6 +17,7 @@ class ObmProcessor {
  **/
   constructor(orederBooks) {
     this.#obs = {};
+
     orederBooks.forEach( (orderBook) => {
       // TODO: Validate orderBook
       this.#obs[orderBook.currencyPair] = {
@@ -24,6 +27,7 @@ class ObmProcessor {
         FetchState: NOT_FETCH,
       };
     });
+
     this.messageProcesor = this.messageProcesor.bind(this);
   }
 
@@ -41,21 +45,18 @@ class ObmProcessor {
     if ( this.#obs[cp].FetchState === NOT_FETCH) {
       fetch(`https://api.bittrex.com/v3/markets/${cp}/orderbook?depth=${this.#obs[cp].orderBook.depth}`)
           .then((response) => {
-            // eslint-disable-next-line
-            if (response.headers.get('sequence') < this.#obs[cp].mq[0].sequence) {
-              console.log(`Discarting OB snapshoot, sequence too old`);
-              this.#obs[cp].FetchState = NOT_FETCH;
-              return;
-            }
-            this.#obs[cp].sequenceNumber = response.headers.get('sequence');
-            return response.json();
+            return this.#handleFetchResponse(response, cp);
           })
           .then( (data) => {
             if ( !data ) return;
+
             this.#obs[cp].FetchState = FETCHED;
+
             try {
               this.#obs[cp].orderBook.init(data.bid, data.ask);
+
               this.#pruneMq(this.#obs[cp].mq, this.#obs[cp].sequenceNumber);
+
               this.#updateMq(this.#obs[cp]);
             } catch (error) {
               this.#handleError(error, this.#obs[cp]);
@@ -64,6 +65,7 @@ class ObmProcessor {
           .catch( (error) => {
             this.#handleError(error, this.#obs[cp]);
           });
+
       this.#obs[cp].FetchState = FETCHING;
       return;
     }
@@ -76,6 +78,23 @@ class ObmProcessor {
   }
 
   /**
+ * Handles fetch response to order book bittrex endpoint.
+ * @param {response} response Response of fetch.
+ * @param {string}   cp Currency Pair.
+ * @return {Object} Body of response parsed.
+ **/
+  #handleFetchResponse(response, cp) {
+    if (response.headers.get('sequence') < this.#obs[cp].mq[0].sequence) {
+      this.#obs[cp].FetchState = NOT_FETCH;
+
+      logger.info(`Discarting OB snapshoot, sequence too old`);
+      return;
+    }
+    this.#obs[cp].sequenceNumber = response.headers.get('sequence');
+    return response.json();
+  }
+
+  /**
  * Remove messages with sequence number less than sn.
  * @param {Array} q queue of message.
  * @param {int} sn Limit sequence number.
@@ -85,8 +104,10 @@ class ObmProcessor {
       if ( c.sequence > sn ) {
         p.push(c);
       }
+
       return p;
     }, []);
+
     q.length = 0;
     q.push(...p);
   }
@@ -101,9 +122,11 @@ class ObmProcessor {
         (message.sequence != Number.parseInt(ob.sequenceNumber) + 1) ) {
         throw new Error('Non sequent message update');
       }
+
       ob.orderBook.update(message.bidDeltas, message.askDeltas);
       ob.sequenceNumber = message.sequence;
     });
+
     ob.mq.length = 0;
   }
 
@@ -116,7 +139,8 @@ class ObmProcessor {
     ob.FetchState = NOT_FETCH;
     ob.mq.length = 0;
     ob.sequenceNumber = -1;
-    console.error(error);
+
+    logger.error(error);
   }
 
   #obs;
