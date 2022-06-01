@@ -9,6 +9,7 @@ class ErrorOB extends Error {
  */
   constructor(args, code = DEFAULT) {
     super(args);
+
     this.code = code;
   }
 }
@@ -53,6 +54,7 @@ class OrderBook {
         throw new ErrorOB('All bids must have rate and quantity keys',
             BAD_KEYS);
       }
+
       this.#bids.push( {
         quantity: bid.quantity,
         rate: bid.rate,
@@ -63,6 +65,7 @@ class OrderBook {
       if ( ! ask.hasOwnProperty('quantity') || ! ask.hasOwnProperty('rate') ) {
         throw new ErrorOB('Ask must have rate and quantity keys', BAD_KEYS);
       }
+
       this.#asks.push( {
         quantity: ask.quantity,
         rate: ask.rate,
@@ -78,61 +81,50 @@ class OrderBook {
  * @param {Array} askDeltas array with all the asks deltas.
  */
   update(bidDeltas, askDeltas) {
-    bidDeltas.forEach( (bid) => {
-      if ( ! bid.hasOwnProperty('quantity') || ! bid.hasOwnProperty('rate') ) {
-        throw new ErrorOB('Bids must have rate and quantity keys', BAD_KEYS);
-      }
-
-      const i = this.#bids.findIndex( (_b) => _b.rate === bid.rate );
-
-      if ( i === -1 ) {
-        this.#bids.push( {
-          quantity: bid.quantity,
-          rate: bid.rate,
-        });
-        return;
-      }
-
-      if ( bid.quantity === '0' ) {
-        this.#bids.splice(i, 1);
-        return;
-      }
-
-      this.#bids[i].quantity = bid.quantity;
-    });
-
-    askDeltas.forEach( (ask) => {
-      if ( ! ask.hasOwnProperty('quantity') || ! ask.hasOwnProperty('rate') ) {
-        throw new ErrorOB('Asks must have rate and quantity keys', BAD_KEYS);
-      }
-
-      const i = this.#asks.findIndex( (_a) => _a.rate === ask.rate );
-
-      if ( i === -1 ) {
-        this.#asks.push( {
-          quantity: ask.quantity,
-          rate: ask.rate,
-        });
-        return;
-      }
-
-      if ( ask.quantity === '0' ) {
-        this.#asks.splice(i, 1);
-        return;
-      }
-
-      this.#asks[i].quantity = ask.quantity;
-    });
+    this.#insertDeltas(bidDeltas, this.#bids);
+    this.#insertDeltas(askDeltas, this.#asks);
 
     if ( this.#asks.length != this.#depth ||
          this.#bids.length != this.#depth ) {
       this.#bids = [];
       this.#asks = [];
+
       // eslint-disable-next-line
       throw new ErrorOB(`Inconsistent update, order book reseted, please init again`, INCONSISTENT_UPDATE);
     }
 
     this.#sort();
+  }
+
+  /**
+ * Updates order array with delta (bids/asks).
+ * @param {Array} deltas Array of deltas to be updated in orders array.
+ * @param {Array} orders Order array to be updateded.
+ */
+  #insertDeltas(deltas, orders) {
+    deltas.forEach( (delta) => {
+      if ( ! delta.hasOwnProperty('quantity') ||
+           ! delta.hasOwnProperty('rate') ) {
+        throw new ErrorOB('Order must have rate and quantity keys', BAD_KEYS);
+      }
+
+      const i = orders.findIndex( (_o) => _o.rate === delta.rate );
+
+      if ( i === -1 ) {
+        orders.push( {
+          quantity: delta.quantity,
+          rate: delta.rate,
+        });
+        return;
+      }
+
+      if ( delta.quantity === '0' ) {
+        orders.splice(i, 1);
+        return;
+      }
+
+      orders[i].quantity = delta.quantity;
+    });
   }
 
   /**
@@ -143,6 +135,7 @@ class OrderBook {
     if (this.#bids.length === 0 || this.#asks.length === 0 ) {
       return {status: 'Empty', message: 'Order book empty, try in a while'};
     }
+
     return {bid: this.#bids[0], ask: this.#asks[0]};
   }
 
@@ -177,7 +170,9 @@ class OrderBook {
     if (this.#bids.length === 0 || this.#asks.length === 0 ) {
       return {status: 'Empty', message: 'Order book empty, try in a while'};
     }
+
     const ret = {status: 'Failed', amount: '', efectivePrice: ''};
+
     let curAmount = 0;
     let curPrice = 0;
     let last = false;
@@ -185,9 +180,9 @@ class OrderBook {
     const orders = isBuy ? this.#asks : this.#bids;
 
     for (const oreder of orders) {
-      let toSellBuy = 0;
-      const rate = Number.parseFloat(oreder.rate);
       const quantity = Number.parseFloat(oreder.quantity);
+      const rate = Number.parseFloat(oreder.rate);
+      let toSellBuy = 0;
 
       if ( curAmount + quantity > amount ) {
         toSellBuy = amount - curAmount;
@@ -195,11 +190,13 @@ class OrderBook {
       } else {
         toSellBuy = quantity;
       }
+
       // eslint-disable-next-line max-len
       const newCurPrice = ( curAmount * curPrice + toSellBuy * rate ) / ( curAmount + toSellBuy );
 
       if ( isBuy && newCurPrice > cap || ! isBuy && newCurPrice < cap) {
         toSellBuy = curAmount * ( curPrice - cap ) / ( cap - rate );
+
         ret.efectivePrice = cap;
         ret.amount = curAmount + toSellBuy;
         ret.status = 'Cap Reached';
