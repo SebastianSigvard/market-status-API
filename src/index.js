@@ -1,11 +1,13 @@
-const cors = require('cors');
-const express = require('express');
-const bodyParser = require('body-parser');
 const MarketStatus = require('./market_status');
-const app = express();
-const server = require('http').createServer(app);
+const bodyParser = require('body-parser');
+const logger = require('./logger');
+const express = require('express');
 const WebSocket = require('ws');
+const http = require('http');
+const cors = require('cors');
+const app = express();
 
+const server = http.createServer(app);
 const wss = new WebSocket.Server( {server} );
 const marketStatus = new MarketStatus();
 
@@ -27,8 +29,10 @@ app.post('/calculate-price', async (request, response) => {
       // eslint-disable-next-line max-len
       message: 'body must include currencyPair operation and amount (cap optional)',
     });
+
     return;
   }
+
   response.json(
       marketStatus.processCalPriReq(currencyPair, operation, amount, cap),
   );
@@ -46,6 +50,7 @@ wss.on('connection', (socket) => {
         data: marketStatus.processTipsReq(data.currencyPair),
       },
       ));
+
       return;
     }
 
@@ -59,13 +64,16 @@ wss.on('connection', (socket) => {
             message: 'body must include currencyPair operation and amount (cap optional)',
           },
         }));
+
         return;
       }
+
       socket.send( JSON.stringify( {
         method: 'calculate-price-response',
         data: marketStatus.processCalPriReq(data.currencyPair,
             data.operation, data.amount, data.cap),
       }));
+
       return;
     }
 
@@ -77,5 +85,5 @@ wss.on('connection', (socket) => {
 });
 
 server.listen(process.env.PORT || 5000, () => {
-  console.log('App aviable on http://localhost:5000');
+  logger.info('App aviable on http://localhost:5000');
 });

@@ -209,7 +209,7 @@ class OrderBook {
       if (last) {
         ret.efectivePrice = curPrice;
         ret.amount = curAmount;
-        ret.status = 'Succes';
+        ret.status = 'Success';
         break;
       }
     }

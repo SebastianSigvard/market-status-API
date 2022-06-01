@@ -3,9 +3,9 @@ const ObmProcessor = require('./obm_processor');
 const OrderBook = require('./order_book');
 
 // this config may be taken from a config file (yaml/json).
+// the keys for security purpose must be in a separate file.
 const url = 'wss://socket-v3.bittrex.com/signalr';
 const hub = ['c3'];
-// the keys for security must be in a separate file.
 const apikey = '7379583862cc43d9b5a2b2ee550452d1';
 const apisecret = 'cc3bdafb64704d20a2413a78fea01be8';
 
@@ -53,6 +53,7 @@ class MarketStatus {
         message: 'For the moment we are only working with BTC-USD and ETH-USD',
       };
     }
+
     return {
       status: 'success',
       currencyPair: currencyPair,
@@ -115,8 +116,8 @@ class MarketStatus {
     }
 
     return {
-      status: 'succes',
-      capReached: res.status === 'Succes' ? false : true,
+      status: 'success',
+      capReached: res.status === 'Success' ? false : true,
       data: {efectivePrice: res.efectivePrice, amount: res.amount},
     };
   }

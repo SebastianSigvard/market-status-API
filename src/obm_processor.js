@@ -146,6 +146,4 @@ class ObmProcessor {
   #obs;
 }
 
-// TODO: try catch every call to bo
-
 module.exports = ObmProcessor;

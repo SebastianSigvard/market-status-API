@@ -12,7 +12,7 @@ const myFormat = format.combine(format.timestamp(),
 
 const logger = createLogger({
   format: myFormat,
-  level: 'silly',
+  level: 'info',
   transports: [
     new transports.Console(),
   ],
