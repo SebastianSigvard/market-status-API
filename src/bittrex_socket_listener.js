@@ -1,7 +1,10 @@
 const signalR = require('signalr-client');
+const logger = require('./logger');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const uuid = require('uuid');
+
+const WATCHDOG_PERIOD = 600000;
 
 /**
  * Class that handels websocket connection to bittrex api, allowing
@@ -11,7 +14,7 @@ class BittrexSocket {
   /**
  * BittrexSocket constructor
  * @param {string} url Url´s api.
- * @param {Array} hub String arrays of hubs.
+ * @param {Array}  hub String arrays of hubs.
  * @param {string} apikey Api key.
  * @param {string} apisecret Api secret key.
  */
@@ -35,7 +38,7 @@ class BittrexSocket {
     if (this.#apisecret) {
       await this.#authenticate(this.#client);
     } else {
-      console.log('Authentication skipped because API key was not provided');
+      logger.error('Authentication skipped because API key was not provided');
       throw new Error('No keys');
     }
   }
@@ -47,18 +50,21 @@ class BittrexSocket {
   async subscribe(channels) {
     if ( ! this.#checkHBStartOnce ) {
       channels.push('heartbeat');
-      console.log('checkHB started once');
-      setInterval(this.#checkHB.bind(this), 30000);
+      setInterval(this.#checkHB.bind(this), WATCHDOG_PERIOD);
+
       this.#checkHBStartOnce = true;
+      logger.info('checkHB started once');
     }
+
     this.#channels = channels;
+
     const response = await this.#invoke(this.#client, 'subscribe', channels);
 
     for (let i = 0; i < channels.length; i++) {
       if (response[i]['Success']) {
-        console.log('Subscription to "' + channels[i] + '" successful');
+        logger.info('Subscription to "' + channels[i] + '" successful');
       } else {
-        console.log('Subscription to "' + channels[i] + '" failed: ' +
+        logger.error('Subscription to "' + channels[i] + '" failed: ' +
                     response[i]['ErrorCode']);
       }
     }
@@ -66,15 +72,17 @@ class BittrexSocket {
 
   /**
  * Private: Connects websocket to bittrex.
- * @return {Object} client instance.
+ * @return {Object} Client instance.
  */
   async #_connect() {
     return new Promise((resolve) => {
       // eslint-disable-next-line new-cap
       const client = new signalR.client(this.#url, this.#hub);
+
       client.serviceHandlers.messageReceived = this.#messageReceived.bind(this);
+
       client.serviceHandlers.connected = () => {
-        console.log('Connected');
+        logger.info('Connected');
         return resolve(client);
       };
     });
@@ -82,7 +90,7 @@ class BittrexSocket {
 
   /**
  * Authenticates the client.
- * @param {Object} client client instance.
+ * @param {Object} client Client instance.
  */
   async #authenticate(client) {
     const timestamp = new Date().getTime();
@@ -98,9 +106,9 @@ class BittrexSocket {
         signedContent);
 
     if (response['Success']) {
-      console.log('Authenticated');
+      logger.info('Authenticated');
     } else {
-      console.log('Authentication failed: ' + response['ErrorCode']);
+      logger.error('Authentication failed: ' + response['ErrorCode']);
       throw new Error('Authentication failed');
     }
   }
@@ -131,9 +139,13 @@ class BittrexSocket {
    */
   #messageReceived(message) {
     const data = JSON.parse(message.utf8Data);
+
     if (data['R']) {
       this.#resolveInvocationPromise(data.R);
-    } else if (data['M']) {
+      return;
+    }
+
+    if (data['M']) {
       data.M.forEach( (m) => {
         if (m['A']) {
           if (m.A[0]) {
@@ -150,7 +162,8 @@ class BittrexSocket {
           } else if (m.M == 'heartbeat') {
             this.#heartBeat = true;
           } else if (m.M == 'authenticationExpiring') {
-            console.log('Authentication expiring...');
+            logger.info('Authentication expiring...');
+
             this.#authenticate(this.#client);
           }
         }
@@ -163,16 +176,19 @@ class BittrexSocket {
    */
   #checkHB() {
     if (this.#heartBeat) {
-      console.log('HB checked');
       this.#heartBeat = false;
-    } else {
-      console.log('Reconecting!');
-      this.#client.end();
-      this.connect(this.#messageProcessor)
-          .then( () => {
-            this.subscribe(this.#channels);
-          });
+
+      logger.info('HB checked');
+      return;
     }
+
+    logger.warn('Reconecting!');
+
+    this.#client.end();
+    this.connect(this.#messageProcessor)
+        .then( () => {
+          this.subscribe(this.#channels);
+        });
   }
 
   #channels;
