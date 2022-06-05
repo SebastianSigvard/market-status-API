@@ -34,8 +34,8 @@ class MarketStatus {
       'orderbook_BTC-USD_' + OB_DEPTH,
       'orderbook_ETH-USD_' + OB_DEPTH,
     ];
-
-    this.#bittrexSocket.connect(this.#obmP.messageProcesor)
+    this.#bittrexSocket.on('message', this.#obmP.messageProcesor);
+    this.#bittrexSocket.connect()
         .then( () => {
           this.#bittrexSocket.subscribe(channels);
         });
