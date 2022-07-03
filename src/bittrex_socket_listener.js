@@ -1,16 +1,16 @@
 const signalR = require('signalr-client');
+const {EventEmitter} = require('events');
 const logger = require('./logger');
 const crypto = require('crypto');
 const zlib = require('zlib');
 const uuid = require('uuid');
-
 const WATCHDOG_PERIOD = 600000;
 
 /**
  * Class that handels websocket connection to bittrex api, allowing
  * you to suscribe to multiples streams.
  */
-class BittrexSocket {
+class BittrexSocket extends EventEmitter {
   /**
  * BittrexSocket constructor
  * @param {string} url Url´s api.
@@ -19,6 +19,7 @@ class BittrexSocket {
  * @param {string} apisecret Api secret key.
  */
   constructor(url, hub, apikey, apisecret) {
+    super();
     this.#url = url;
     this.#hub = hub;
     this.#apikey = apikey;
@@ -28,10 +29,8 @@ class BittrexSocket {
 
   /**
  * Connects websocket to bittrex.
- * @param {function} messageProcessor Message user procesor.
  */
-  async connect(messageProcessor) {
-    this.#messageProcessor = messageProcessor;
+  async connect() {
     this.#client = await this.#_connect();
     this.#heartBeat = true;
 
@@ -156,7 +155,7 @@ class BittrexSocket {
             zlib.inflateRaw(raw, (err, inflated) => {
               if (!err) {
                 const json = JSON.parse(inflated.toString('utf8'));
-                this.#messageProcessor(json);
+                this.emit('message', json);
               }
             });
           } else if (m.M == 'heartbeat') {
@@ -185,7 +184,7 @@ class BittrexSocket {
     logger.warn('Reconecting!');
 
     this.#client.end();
-    this.connect(this.#messageProcessor)
+    this.connect()
         .then( () => {
           this.subscribe(this.#channels);
         });
@@ -202,7 +201,6 @@ class BittrexSocket {
 
   #client;
   #resolveInvocationPromise = () => { };
-  #messageProcessor = () => { };
 }
 
 module.exports = BittrexSocket;
