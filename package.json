@@ -4,7 +4,7 @@
   "description": "The goal of this project is to create a public API REST that retrieves market information for trading pairs. This project is a possible solution of a hiring challenge for Rather Labs.",
   "main": ".eslintrc.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest",
     "start": "node ./src/index.js",
     "watch": "nodemon ./src/index.js",
     "lint": "eslint .  --ext .js"
@@ -23,6 +23,8 @@
   "devDependencies": {
     "eslint": "^8.19.0",
     "eslint-config-google": "^0.14.0",
+    "jest": "^28.1.2",
     "nodemon": "^2.0.18"
-  }
+  },
+  "type": "module"
 }
