@@ -26,5 +26,8 @@
     "jest": "^28.1.2",
     "nodemon": "^2.0.18"
   },
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "superagent": "^8.0.0"
+  }
 }
