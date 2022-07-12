@@ -28,6 +28,10 @@
   },
   "type": "module",
   "dependencies": {
-    "superagent": "^8.0.0"
+    "node-signalr": "^2.0.6",
+    "superagent": "^8.0.0",
+    "uuid": "^8.3.2",
+    "winston": "^3.8.1",
+    "zlib": "^1.0.5"
   }
 }

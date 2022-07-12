@@ -12,10 +12,10 @@ const myFormat = format.combine(format.timestamp(),
 
 const logger = createLogger({
   format: myFormat,
-  level: 'info',
+  level: 'debug',
   transports: [
     new transports.Console(),
   ],
 });
 
-module.exports = logger;
+export default logger;

@@ -1,5 +1,5 @@
 import superagent from 'superagent';
-import logger from '../../logger';
+import logger from '../../logger.js';
 
 // States for Synchronizing
 const NOT_FETCH = 0;
@@ -72,7 +72,7 @@ export default class ObmProcessor {
     if (response.headers.sequence < this.#obs[cp].mq[0].sequence) {
       this.#obs[cp].fetchState = NOT_FETCH;
 
-      logger.info(`Discarting OB snapshoot, sequence too old`);
+      logger.info(`obmp: Discarting OB snapshoot, sequence too old`);
       return;
     }
 
@@ -106,7 +106,7 @@ export default class ObmProcessor {
     ob.mq.forEach( (message) => {
       if ( ob.sequenceNumber != -1 &&
         (message.sequence != Number.parseInt(ob.sequenceNumber) + 1) ) {
-        throw new Error('Non sequent message update');
+        throw new Error('obmp: Non sequent message update');
       }
 
       ob.orderBook.update(message.bidDeltas, message.askDeltas);
