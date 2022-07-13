@@ -19,7 +19,8 @@ const ob = new OrderBook(OB_DEPTH, 'BTC-USD');
 const bslDeps = {
   signalR: signalRAdapter,
   zlib: zlib,
-  uuid: {v4}};
+  uuid: {v4},
+  logger: logger};
 
 const bittrexSocket = new BittrexSocket(url,
     hub,
@@ -29,7 +30,7 @@ const bittrexSocket = new BittrexSocket(url,
 
 logger.info('bittrex listener created');
 
-const obmp = new ObmProcessor([ob], bittrexSocket);
+const obmp = new ObmProcessor([ob], bittrexSocket, logger);
 
 bittrexSocket.connect()
     .then( () => {
@@ -44,6 +45,7 @@ function sleep(ms) {
 }
 
 const loop = async () => {
+  await sleep(4000);
   while (true) {
     logger.info(JSON.stringify(getTips(ob)));
     await sleep(1000);

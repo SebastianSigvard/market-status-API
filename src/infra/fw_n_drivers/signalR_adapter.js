@@ -1,10 +1,10 @@
+import {SignalRInterface} from './signalR_interface.js';
 import SignalR from 'node-signalr';
-import logger from '../../logger.js';
 
 /**
  * Adapter for node-signalr module for bittrex socket listener.
  */
-class SignalRAdapter {
+class SignalRAdapter extends SignalRInterface {
   /**
  * Creates a new client
  * @param {string} url Url´s api.
@@ -32,7 +32,6 @@ class SignalRAdapter {
     client.connection.hub.on(hub, event, mp);
   }
 
-
   /**
  * Inits connection.
  * @param {Object}   client SignalR client.
@@ -49,7 +48,6 @@ class SignalRAdapter {
  * @return {Promise} Promise that can be rejected or resolved.
 */
   call(client, hub, method, ...args) {
-    logger.debug(`sra: Calling ${method}`);
     return client.connection.hub.call(hub, method, ...args);
   }
 }

@@ -1,6 +1,7 @@
+import signalRInterface, {SignalRInterface} from './signalR_interface.js';
 import EventEmitter from 'events';
-import logger from '../../logger.js';
 import crypto from 'crypto';
+
 const DEFAULT_WATCHDOG_PERIOD = 600000;
 
 /**
@@ -14,10 +15,11 @@ export default class BittrexSocket extends EventEmitter {
  * @param {Array}  hub String arrays of hubs.
  * @param {string} apikey Api key.
  * @param {string} apisecret Api secret.
- * @param {Object} deps signalR zlib and uuid dep inject.
+ * @param {Object} deps signalR, zlib, uuid and logger dep inject.
  * @param {Number} wdPeriod Watch dog period.
  */
-  constructor(url, hub, apikey, apisecret, {signalR, zlib, uuid},
+  constructor(url, hub, apikey, apisecret,
+      {signalR = signalRInterface, zlib, uuid, logger},
       wdPeriod = DEFAULT_WATCHDOG_PERIOD) {
     super();
 
@@ -26,9 +28,13 @@ export default class BittrexSocket extends EventEmitter {
     this.#apikey = apikey;
     this.#apisecret = apisecret;
 
+    if (! (Object.getPrototypeOf(signalR) instanceof SignalRInterface)) {
+      throw Error('signalR dep inject must be an instance of SignalRInterface');
+    }
     this.#signalR = signalR;
     this.#zlib = zlib;
     this.#uuid = uuid;
+    this.#logger = logger;
 
     this.#wdPeriod = wdPeriod;
     this.#checkHBStartOnce = false;
@@ -44,7 +50,7 @@ export default class BittrexSocket extends EventEmitter {
     if (this.#apisecret) {
       await this.#authenticate(this.#client);
     } else {
-      logger.error('bsl: API key was not provided');
+      this.#logger.error('bsl: API key was not provided');
       throw new Error('No keys');
     }
   }
@@ -54,14 +60,14 @@ export default class BittrexSocket extends EventEmitter {
  * @param {Array} channels channels to suscribe.
  */
   async subscribe(channels) {
-    logger.debug(`bsl: subscribe to ${channels}`);
+    this.#logger.debug(`bsl: subscribe to ${channels}`);
 
     if ( ! this.#checkHBStartOnce ) {
       channels.push('heartbeat');
       setInterval(this.#checkHB.bind(this), this.#wdPeriod);
 
       this.#checkHBStartOnce = true;
-      logger.info('bsl: checkHB started once');
+      this.#logger.info('bsl: checkHB started once');
     }
 
     this.#channels = channels;
@@ -70,10 +76,11 @@ export default class BittrexSocket extends EventEmitter {
 
     for (let i = 0; i < channels.length; i++) {
       if (response[i]['Success']) {
-        logger.info('bsl: Subscription to "' + channels[i] + '" successful');
+        this.#logger.info('bsl: Subscription to "' + channels[i] +
+          '" successful');
       } else {
-        logger.error('bsl: Subscription to "' + channels[i] + '" failed: ' +
-                    response[i]['ErrorCode']);
+        this.#logger.error('bsl: Subscription to "' + channels[i] +
+          '" failed: ' + response[i]['ErrorCode']);
       }
     }
   }
@@ -96,7 +103,7 @@ export default class BittrexSocket extends EventEmitter {
           this.#authExpProcessor.bind(this));
 
       this.#signalR.on(client, 'connected', this.#hub[0], () => {
-        logger.info('bsl: Connected');
+        this.#logger.info('bsl: Connected');
         return resolve(client);
       });
 
@@ -109,7 +116,7 @@ export default class BittrexSocket extends EventEmitter {
  * @param {Object} client Client instance.
  */
   async #authenticate(client) {
-    logger.debug('bsl: authenticate');
+    this.#logger.debug('bsl: authenticate');
 
     const timestamp = new Date().getTime();
     const randomContent = this.#uuid.v4();
@@ -124,9 +131,11 @@ export default class BittrexSocket extends EventEmitter {
         signedContent);
 
     if (response['Success']) {
-      logger.info('bsl: Authenticated');
+      this.#logger.info('bsl: Authenticated');
     } else {
-      logger.error('bsl: Authentication failed: ' + response['ErrorCode']);
+      this.#logger.error('bsl: Authentication failed: ' +
+                          response['ErrorCode']);
+
       throw new Error('Authentication failed');
     }
   }
@@ -147,7 +156,7 @@ export default class BittrexSocket extends EventEmitter {
 
         resolve(result);
       } catch (err) {
-        logger.error('bsl: invoke error');
+        this.#logger.error('bsl: invoke error');
         reject(err);
       }
     });
@@ -158,14 +167,14 @@ export default class BittrexSocket extends EventEmitter {
    * @param {Object} m Incoming message.
    */
   #orderBookProcessor(m) {
-    logger.silly('bsl: orderBookProcessor');
+    this.#logger.silly('bsl: orderBookProcessor');
 
     const b64 = m;
     const raw = Buffer.from(b64, 'base64');
 
     this.#zlib.inflateRaw(raw, (err, inflated) => {
       if (err) {
-        logger.error('bsl: orderBookProcessor: inflateRaw err');
+        this.#logger.error('bsl: orderBookProcessor: inflateRaw err');
         return;
       }
 
@@ -179,7 +188,7 @@ export default class BittrexSocket extends EventEmitter {
    * @param {Object} m Incoming message.
    */
   #heartbeatProcessor(m) {
-    logger.debug('bsl: heartbeatProcessor');
+    this.#logger.debug('bsl: heartbeatProcessor');
 
     this.#heartBeat = true;
   }
@@ -189,7 +198,7 @@ export default class BittrexSocket extends EventEmitter {
    * @param {Object} m Incoming message.
    */
   #authExpProcessor(m) {
-    logger.info('bsl: Authentication expired');
+    this.#logger.info('bsl: Authentication expired');
 
     this.#authenticate(this.#client);
   }
@@ -200,11 +209,11 @@ export default class BittrexSocket extends EventEmitter {
     if (this.#heartBeat) {
       this.#heartBeat = false;
 
-      logger.info('bsl: HB checked');
+      this.#logger.info('bsl: HB checked');
       return;
     }
 
-    logger.warn('bsl: Reconecting!');
+    this.#logger.warn('bsl: Reconecting!');
 
     this.#client.end();
     this.connect()
@@ -226,7 +235,7 @@ export default class BittrexSocket extends EventEmitter {
   #signalR;
   #zlib;
   #uuid;
+  #logger;
 
   #client;
-  #resolveInvocationPromise = () => { };
 }

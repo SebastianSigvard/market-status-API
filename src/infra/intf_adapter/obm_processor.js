@@ -1,5 +1,4 @@
 import superagent from 'superagent';
-import logger from '../../logger.js';
 
 // States for Synchronizing
 const NOT_FETCH = 0;
@@ -14,8 +13,10 @@ export default class ObmProcessor {
  * ObmProcessor constructor
  * @param {Array} orederBooks All order books to fill and mantain.
  * @param {EventEmitter} eventEmitter Emitter of update messages.
+ * @param {Object} logger Logger dep inject.
  **/
-  constructor(orederBooks, eventEmitter) {
+  constructor(orederBooks, eventEmitter, logger) {
+    this.#logger = logger;
     this.#obs = {};
 
     orederBooks.forEach( (orderBook) => {
@@ -72,7 +73,7 @@ export default class ObmProcessor {
     if (response.headers.sequence < this.#obs[cp].mq[0].sequence) {
       this.#obs[cp].fetchState = NOT_FETCH;
 
-      logger.info(`obmp: Discarting OB snapshoot, sequence too old`);
+      this.#logger.info(`obmp: Discarting OB snapshoot, sequence too old`);
       return;
     }
 
@@ -126,8 +127,9 @@ export default class ObmProcessor {
     ob.mq.length = 0;
     ob.sequenceNumber = -1;
 
-    logger.error(error);
+    this.#logger.error(error);
   }
 
   #obs;
+  #logger;
 }
