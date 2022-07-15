@@ -11,9 +11,9 @@ const FETCHED =2;
 export default class ObmProcessor {
   /**
  * ObmProcessor constructor
- * @param {Array} orederBooks All order books to fill and mantain.
+ * @param {Array}        orederBooks All order books to fill and mantain.
  * @param {EventEmitter} eventEmitter Emitter of update messages.
- * @param {Object} logger Logger dep inject.
+ * @param {Object}       logger Logger dep inject.
  **/
   constructor(orederBooks, eventEmitter, logger) {
     this.#logger = logger;
@@ -84,7 +84,7 @@ export default class ObmProcessor {
   /**
  * Remove messages with sequence number less than sn.
  * @param {Array} q queue of message.
- * @param {int} sn Limit sequence number.
+ * @param {int}   sn Limit sequence number.
  **/
   #pruneMq(q, sn) {
     const p = q.reduce((p, c) => {
