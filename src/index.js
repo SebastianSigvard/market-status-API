@@ -22,7 +22,7 @@ const cpDepthPairs = [
   {cp: 'ETH-USD', depth: OB_DEPTH},
 ];
 
-const worker = new Worker(__dirname + '/ob_worker.js', {
+const worker = new Worker(__dirname + '/ms_worker.js', {
   workerData: {cpDepthPairs, workerID: 0},
 });
 
