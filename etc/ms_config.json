@@ -1,0 +1,13 @@
+{
+    "bittrex": {
+        "baseUrl" : "https://socket-v3.bittrex.com/signalr",
+        "hub" : ["c3"],
+        "apiKey" : "7379583862cc43d9b5a2b2ee550452d1",
+        "apisecret" : "cc3bdafb64704d20a2413a78fea01be8"
+    },
+    "cpDepthPairs" : [
+        {"cp": "BTC-USD", "depth": 25},
+        {"cp": "ETH-USD", "depth": 25}
+    ],
+    "workerCnt" : 3
+}

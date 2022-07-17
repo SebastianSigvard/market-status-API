@@ -18,12 +18,8 @@ parentPort.on('message', (m) => {
       logger.debug(`obw[${workerID}]: getTips method called`);
       ret = marketStatus.processTipsReq(m.cp);
       break;
-    case 'buyPrice':
-      logger.debug(`obw[${workerID}]: buyPricebuyPrice method called`);
-      ret = marketStatus.processCalPriReq(m.cp, m.operation, m.amount, m.cap);
-      break;
-    case 'sellPrice':
-      logger.debug(`obw[${workerID}]: sellPrice method called`);
+    case 'calcPrice':
+      logger.debug(`obw[${workerID}]: calcPrice method called`);
       ret = marketStatus.processCalPriReq(m.cp, m.operation, m.amount, m.cap);
       break;
     case 'obUpdateMessage':

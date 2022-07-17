@@ -1,83 +1,91 @@
-import BittrexSocket from './infra/fw_n_drivers/bittrex_socket_listener.js';
-import signalRAdapter from './infra/fw_n_drivers/signalR_adapter.js';
-import {Worker} from 'worker_threads';
-import {fileURLToPath} from 'url';
+import RequestHandler from './req_handler.js';
+import bodyParser from 'body-parser';
 import logger from './logger.js';
-import path from 'path';
-import zlib from 'zlib';
-import {v4} from 'uuid';
+import express from 'express';
+import WebSocket from 'ws';
+import http from 'http';
+import cors from 'cors';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const app = express();
 
-const url = 'https://socket-v3.bittrex.com/signalr';
-const hub = ['c3'];
-const apikey = '7379583862cc43d9b5a2b2ee550452d1';
-const apisecret = 'cc3bdafb64704d20a2413a78fea01be8';
+const server = http.createServer(app);
+const wss = new WebSocket.Server( {server} );
 
-const OB_DEPTH = 25;
+const requestHandler = new RequestHandler(logger);
 
-const cpDepthPairs = [
-  {cp: 'BTC-USD', depth: OB_DEPTH},
-  {cp: 'ETH-USD', depth: OB_DEPTH},
-];
+// API REST
 
-const worker = new Worker(__dirname + '/ms_worker.js', {
-  workerData: {cpDepthPairs, workerID: 0},
+app.use(bodyParser.json());
+app.use(cors());
+
+app.get('/tips/*', async (request, response) => {
+  const cp = request.url.replace('/tips/', '');
+  response.json( await requestHandler.processTipsReq(cp));
 });
 
-const bslDeps = {
-  signalR: signalRAdapter,
-  zlib: zlib,
-  uuid: {v4},
-  logger: logger};
-
-const bittrexSocket = new BittrexSocket(url,
-    hub,
-    apikey,
-    apisecret,
-    bslDeps);
-
-logger.info('bittrex listener created');
-
-bittrexSocket.connect()
-    .then( () => {
-      bittrexSocket.subscribe(['orderbook_BTC-USD_25', 'orderbook_ETH-USD_25']);
+app.post('/calculate-price', async (request, response) => {
+  const {currencyPair, operation, amount, cap = undefined} = request.body;
+  if ( !currencyPair || !operation || ! amount) {
+    return response.json( {
+      status: 'error',
+      // eslint-disable-next-line max-len
+      message: 'body must include currencyPair operation and amount (cap optional)',
     });
-
-bittrexSocket.on('message', (m) => {
-  worker.postMessage({method: 'obUpdateMessage', updateMessage: m});
-});
-
-worker.on('message', (data) => {
-  logger.info(`From worker: reqID: ${data.reqID} ret: ${JSON.stringify(data)}`);
-});
-
-// eslint-disable-next-line require-jsdoc
-function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
-}
-
-let reqID = 0;
-const loop = async () => {
-  await sleep(4000);
-  while (true) {
-    worker.postMessage({reqID: reqID++, method: 'getTips', cp: 'BTC-USD'});
-    await sleep(1000);
-    worker.postMessage({reqID: reqID++, method: 'buyPrice',
-      cp: 'BTC-USD',
-      operation: 'buy',
-      amount: 1});
-    await sleep(1000);
-    worker.postMessage({reqID: reqID++, method: 'sellPrice',
-      cp: 'ETH-USD',
-      operation: 'sell',
-      amount: 1});
-    await sleep(1000);
   }
-};
 
-logger.info('STARTED');
-loop();
+  response.json(
+      await requestHandler.processCalPriReq(
+          currencyPair,
+          operation,
+          amount,
+          cap === '' ? undefined : cap,
+      ),
+  );
+});
+
+// WEWSocket
+
+wss.on('connection', (socket) => {
+  socket.addEventListener('message', async (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.method === 'tips') {
+      return socket.send( JSON.stringify( {
+        method: 'tips-response',
+        data: await requestHandler.processTipsReq(data.currencyPair),
+      },
+      ));
+    }
+
+    if (data.method === 'calculate-price') {
+      if ( !data.currencyPair || !data.operation || ! data.amount) {
+        return socket.send( JSON.stringify( {
+          method: 'calculate-price-response',
+          data: {
+            status: 'error',
+            // eslint-disable-next-line max-len
+            message: 'body must include currencyPair operation and amount (cap optional)',
+          },
+        }));
+      }
+
+      return socket.send( JSON.stringify( {
+        method: 'calculate-price-response',
+        data: await requestHandler.processCalPriReq(
+            data.currencyPair,
+            data.operation,
+            data.amount,
+            data.cap === '' ? undefined : data.cap),
+      }));
+    }
+
+    socket.send( JSON.stringify( {
+      method: '',
+      data: {message: 'Available methods: tips and calculate-price'},
+    }));
+  });
+});
+
+server.listen(process.env.PORT || 5000, () => {
+  logger.info('App aviable on http://localhost:5000');
+});
