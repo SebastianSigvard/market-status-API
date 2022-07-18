@@ -12,10 +12,14 @@ const myFormat = format.combine(format.timestamp(),
 
 const logger = createLogger({
   format: myFormat,
-  level: 'debug',
-  transports: [
-    new transports.Console(),
-  ],
+  level: 'info',
 });
+
+if (process.env.NODE_ENV !== 'PRODUCTION') {
+  logger.add(new transports.Console({format: myFormat}));
+  logger.level = 'debug';
+} else {
+  logger.add(new transports.File({filename: 'log/markket_status.log'}));
+}
 
 export default logger;
