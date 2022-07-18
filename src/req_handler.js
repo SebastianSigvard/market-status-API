@@ -6,7 +6,6 @@ import {fileURLToPath} from 'url';
 import path from 'path';
 import zlib from 'zlib';
 import {v4} from 'uuid';
-import logger from './logger.js';
 
 /**
  * Class that handels request for market status
@@ -21,6 +20,8 @@ export default class RequestHandler {
   constructor(logger) {
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
+
+    this.#logger = logger;
 
     // ms workers init
     this.#workerCnt = process.env.WORKER_CNT || CONFIG.workerCnt;
@@ -88,7 +89,7 @@ export default class RequestHandler {
   processTipsReq(currencyPair) {
     const request = 'tips' + currencyPair;
     if(this.#runningReq.has(request)){
-      logger.debug('Batching');
+      this.#logger.debug('Batching');
       return this.#runningReq.get(request);
     }
 
@@ -123,7 +124,7 @@ export default class RequestHandler {
   processCalPriReq(currencyPair, operation, amount, cap) {
     const request = operation + currencyPair + amount + cap;
     if(this.#runningReq.has(request)){
-      logger.debug('Batching');
+      this.#logger.debug('Batching');
       return this.#runningReq.get(request);
     }
 
@@ -156,4 +157,6 @@ export default class RequestHandler {
 
   #workerCnt;
   #workers;
+
+  #logger;
 }
