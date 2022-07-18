@@ -1,3 +1,4 @@
 node_modules
 .gcloudignore
 app.yaml
+*.log

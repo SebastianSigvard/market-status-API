@@ -20,27 +20,29 @@ app.use(cors());
 
 app.get('/tips/*', async (request, response) => {
   const cp = request.url.replace('/tips/', '');
-  response.json( await requestHandler.processTipsReq(cp));
+  const res = await requestHandler.processTipsReq(cp);
+  const code = res.status === 'success' ? 200 : 400;
+  response.status(code).json(res);
 });
 
 app.post('/calculate-price', async (request, response) => {
   const {currencyPair, operation, amount, cap = undefined} = request.body;
   if ( !currencyPair || !operation || ! amount) {
-    return response.json( {
+    return response.status(400).json( {
       status: 'error',
       // eslint-disable-next-line max-len
       message: 'body must include currencyPair operation and amount (cap optional)',
     });
   }
 
-  response.json(
-      await requestHandler.processCalPriReq(
-          currencyPair,
-          operation,
-          amount,
-          cap === '' ? undefined : cap,
-      ),
+  const res = await requestHandler.processCalPriReq(
+      currencyPair,
+      operation,
+      amount,
+    cap === '' ? undefined : cap,
   );
+  const code = res.status === 'success' ? 200 : 400;
+  response.status(code).json(res);
 });
 
 // WEWSocket
