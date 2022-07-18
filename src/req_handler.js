@@ -6,6 +6,7 @@ import {fileURLToPath} from 'url';
 import path from 'path';
 import zlib from 'zlib';
 import {v4} from 'uuid';
+import logger from './logger.js';
 
 /**
  * Class that handels request for market status
@@ -75,6 +76,8 @@ export default class RequestHandler {
         resolve(data.ret);
       });
     });
+
+    this.#runningReq = new Map();
   }
 
   /**
@@ -83,7 +86,13 @@ export default class RequestHandler {
  * @return {Promise} Will resolve when worker send buck results.
  **/
   processTipsReq(currencyPair) {
-    return new Promise( (resolve) => {
+    const request = 'tips' + currencyPair;
+    if(this.#runningReq.has(request)){
+      logger.debug('Batching');
+      return this.#runningReq.get(request);
+    }
+
+    const resPromise = new Promise( (resolve) => {
       this.#workers[Math.abs(this.#reqIndex%this.#workerCnt)]
           .postMessage({
             reqID: this.#reqIndex,
@@ -93,6 +102,14 @@ export default class RequestHandler {
 
       this.#reqPrmoiseMap[this.#reqIndex++] = resolve;
     });
+
+    this.#runningReq.set(request, resPromise);
+
+    resPromise.finally( () => {
+      this.#runningReq.delete(request);
+    })
+
+    return resPromise;
   }
 
   /**
@@ -104,7 +121,13 @@ export default class RequestHandler {
  * @return {Promise} Will resolve when worker send buck results.
  **/
   processCalPriReq(currencyPair, operation, amount, cap) {
-    return new Promise( (resolve) => {
+    const request = operation + currencyPair + amount + cap;
+    if(this.#runningReq.has(request)){
+      logger.debug('Batching');
+      return this.#runningReq.get(request);
+    }
+
+    const resPromise =  new Promise( (resolve) => {
       this.#workers[Math.abs(this.#reqIndex%this.#workerCnt)]
           .postMessage({
             reqID: this.#reqIndex,
@@ -117,10 +140,19 @@ export default class RequestHandler {
 
       this.#reqPrmoiseMap[this.#reqIndex++] = resolve;
     });
+
+    this.#runningReq.set(request, resPromise);
+
+    resPromise.finally( () => {
+      this.#runningReq.delete(request);
+    })
+
+    return resPromise;
   }
 
   #reqIndex;
   #reqPrmoiseMap;
+  #runningReq;
 
   #workerCnt;
   #workers;
